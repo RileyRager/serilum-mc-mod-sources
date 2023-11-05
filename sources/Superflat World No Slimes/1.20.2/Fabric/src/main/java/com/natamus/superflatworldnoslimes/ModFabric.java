@@ -14,35 +14,60 @@
  * Thanks for looking at the source code! Hope it's of some use to your project. Happy modding!
  */
 
-package com.natamus.superflatworldnoslimes;
-
 import com.natamus.collective.check.RegisterMod;
 import com.natamus.collective.fabric.callbacks.CollectiveEntityEvents;
 import com.natamus.superflatworldnoslimes.events.SlimeEvent;
 import com.natamus.superflatworldnoslimes.util.Reference;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
+import net.minecraft.entity.EntityType;
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 
 public class ModFabric implements ModInitializer {
-	
-	@Override
-	public void onInitialize() {
-		setGlobalConstants();
-		ModCommon.init();
+    private static boolean allowSlimes = false;
 
-		loadEvents();
+    @Override
+    public void onInitialize() {
+        setGlobalConstants();
+        ModCommon.init();
 
-		RegisterMod.register(Reference.NAME, Reference.MOD_ID, Reference.VERSION, Reference.ACCEPTED_VERSIONS);
-	}
+        loadEvents();
 
-	private void loadEvents() {
-		CollectiveEntityEvents.PRE_ENTITY_JOIN_WORLD.register((Level world, Entity entity) -> {
-			return SlimeEvent.onWorldJoin(world, entity);
-		});
-	}
+        RegisterMod.register(Reference.NAME, Reference.MOD_ID, Reference.VERSION, Reference.ACCEPTED_VERSIONS);
+    }
 
-	private static void setGlobalConstants() {
+    private void loadEvents() {
+        CollectiveEntityEvents.PRE_ENTITY_JOIN_WORLD.register((Level world, Entity entity) -> {
+            return SlimeEvent.onWorldJoin(world, entity);
+        });
+    }
 
-	}
+    private static void setGlobalConstants() {
+        CommandRegistrationCallback.EVENT.register((dispatcher, dedicated) -> {
+            dispatcher.register(CommandManager.literal("allowslimes")
+                .executes(context -> {
+                    allowSlimes = true;
+                    return 1;
+                })
+                .then(CommandManager.literal("c")
+                    .executes(context -> {
+                        allowSlimes = false;
+                        return 1;
+                    })
+                )
+            );
+        });
+    }
+}
+
+public class SlimeEvent {
+    public static boolean onWorldJoin(Level world, Entity entity) {
+        if (entity.getType().equals(EntityType.SLIME) && !allowSlimes) {
+            entity.remove();
+            return false;
+        }
+        return true;
+    }
 }
